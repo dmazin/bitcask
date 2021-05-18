@@ -1,4 +1,4 @@
-package main
+package bitcask
 
 import (
 	"fmt"
@@ -20,9 +20,8 @@ func set(key string, value string) error {
 }
 
 func get(key string) (string, error) {
-	return "", nil
-}
-
-func main() {
-	fmt.Println("Hello, World!")
+	f, err := os.OpenFile("database", os.O_RDONLY, 0644)
+	if err != nil {
+		return "", err
+	}
 }
