@@ -2,13 +2,14 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 
 	"github.com/dmazin/naivedb"
 )
 
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
 	flag.Parse()
 
 	var key, value string
@@ -35,5 +36,5 @@ func main() {
 		}
 	}
 
-	fmt.Printf("%s=%s", key, value)
+	log.Printf("and your key/value is... %s=%s", key, value)
 }
