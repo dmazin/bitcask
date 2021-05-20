@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"strings"
 )
@@ -11,10 +12,13 @@ import (
 type ReaderStringWriter interface {
 	io.Reader
 	io.StringWriter
+	io.Seeker
 }
 
 type NaiveDB struct {
-	reader ReaderStringWriter
+	store    ReaderStringWriter
+	hintStore io.ReadWriter
+	offsetMap map[string]int64
 }
 
 type FileBackedNaiveDB struct {
@@ -47,14 +51,36 @@ func (db *FileBackedNaiveDB) Get(key string) (value string, err error) {
 }
 
 func (db *NaiveDB) set(key string, value string) (err error) {
-	_, err = db.reader.WriteString(fmt.Sprintf("%s,%s\n", key, value))
+	currentOffset, err := db.store.Seek(0, io.SeekEnd)
+	if err != nil {
+		return err
+	}
+
+	// fmt.Println(currentOffset)
+
+	_, err = db.store.WriteString(fmt.Sprintf("%s,%s\n", key, value))
+	db.offsetMap[key] = currentOffset
 	return err
 }
 
 func (db *NaiveDB) get(key string) (value string, err error) {
-	scanner := bufio.NewScanner(db.reader)
+	offset, ok := db.offsetMap[key]
+	if !ok {
+		panic("oh no")
+	}
+
+	db.store.Seek(offset, io.SeekStart)
+
+	scanner := bufio.NewScanner(db.store)
 	for scanner.Scan() {
+		currentOffset, err := db.store.Seek(0, io.SeekCurrent)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		println(currentOffset)
 		line := scanner.Text()
+
+		fmt.Printf(line)
 
 		if strings.Contains(line, key) {
 			value = strings.Split(line, ",")[1]
