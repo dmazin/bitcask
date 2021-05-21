@@ -24,33 +24,30 @@ type NaiveDB struct {
 }
 
 type FileBackedNaiveDB struct {
-	db   NaiveDB
-	file *os.File
+	db        NaiveDB
+	store     io.Closer
+	hintStore io.Closer
 }
 
-func (db *NaiveDB) attemptLoadOffsetMap() {
-	dec := gob.NewDecoder(db.hintStore)
-	if err := dec.Decode(&db.offsetMap); err != nil {
+func attemptLoadOffsetMap(r io.Reader, obj interface{}) {
+	// todo rename me to be more general
+	dec := gob.NewDecoder(r)
+	if err := dec.Decode(obj); err != nil {
 		log.Fatalln(err)
 	}
 
-	log.Printf("loaded offset map %v", db.offsetMap)
+	log.Printf("loaded object %v", obj)
 }
 
-func (db *NaiveDB) attemptSaveOffsetMap() {
-	enc := gob.NewEncoder(db.hintStore)
-	if err := enc.Encode(db.offsetMap); err != nil {
+func attemptSaveOffsetMap(r io.Writer, obj interface{}) {
+	// todo rename me to be more general
+	dec := gob.NewEncoder(r)
+	if err := dec.Encode(obj); err != nil {
 		log.Fatalln(err)
 	}
 
-	log.Printf("saved offset map %v", db.offsetMap)
+	log.Printf("saved object %v", obj)
 }
-
-// func NewNaiveDB(store ReaderStringWriter, hintStore io.ReadWriter) (NaiveDB, error) {
-// 	offsetMap := make(map[string]int64)
-// 	db := NaiveDB{store, hintStore, offsetMap}
-// 	return db, nil
-// }
 
 func NewFileBackedNaiveDB(filename string) (_ *FileBackedNaiveDB, err error) {
 	store, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
@@ -58,35 +55,34 @@ func NewFileBackedNaiveDB(filename string) (_ *FileBackedNaiveDB, err error) {
 		return nil, err
 	}
 
-	var db NaiveDB
-
 	hintStoreFilename := fmt.Sprintf("%s.hint", filename)
 	hintStore, err := os.OpenFile(hintStoreFilename, os.O_RDWR, 0644)
+	offsetMap := make(map[string]int64)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			hintStore, err = os.Create(hintStoreFilename)
 			if err != nil {
+				// fixme just return these errs instead
 				log.Fatalln(err)
 			}
-			offsetMap := make(map[string]int64)
-			db = NaiveDB{store, hintStore, offsetMap}
+
+			// Don't return os.ErrNotExist from main fn
 			err = nil
 		} else {
 			log.Fatalln(err)
 		}
 	} else {
-		offsetMap := make(map[string]int64)
-		db = NaiveDB{store, hintStore, offsetMap}
-		db.attemptLoadOffsetMap()
+		attemptLoadOffsetMap(hintStore, &offsetMap)
 	}
 
-	return &FileBackedNaiveDB{db, store}, err
+	db := NaiveDB{store, hintStore, offsetMap}
+	return &FileBackedNaiveDB{db, store, hintStore}, err
 }
 
 func (db *FileBackedNaiveDB) Set(key string, value string) (err error) {
 	err = db.db.set(key, value)
 	if err != nil {
-		db.file.Close() // ignore error; Write error takes precedence
+		db.store.Close() // ignore error; Write error takes precedence
 		return err
 	}
 
@@ -103,21 +99,17 @@ func (db *NaiveDB) set(key string, value string) (err error) {
 		return err
 	}
 
-	// fmt.Println(currentOffset)
-
 	_, err = db.store.WriteString(fmt.Sprintf("%s,%s\n", key, value))
 	db.offsetMap[key] = currentOffset
 
-	db.attemptSaveOffsetMap()
+	attemptSaveOffsetMap(db.hintStore, db.offsetMap)
 
 	return err
 }
 
 func (db *NaiveDB) get(key string) (value string, err error) {
-	offset, ok := db.offsetMap[key]
-	if !ok {
-		panic("oh no")
-	}
+	offset := db.offsetMap[key]
+	// fixme return an error if the key is missing
 
 	db.store.Seek(offset, io.SeekStart)
 
