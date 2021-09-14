@@ -30,7 +30,8 @@ type FileBackedNaiveDB struct {
 }
 
 func attemptLoadOffsetMap(r io.Reader, obj interface{}) {
-	// todo rename me to be more general
+	// decodes an arbitrary obj from r
+	// todo rename me to be more general (works on more than just offsetMaps)
 	dec := gob.NewDecoder(r)
 	if err := dec.Decode(obj); err != nil {
 		log.Fatalln(err)
@@ -40,7 +41,8 @@ func attemptLoadOffsetMap(r io.Reader, obj interface{}) {
 }
 
 func attemptSaveOffsetMap(r io.Writer, obj interface{}) {
-	// todo rename me to be more general
+	// encodes an arbitrary obj to r
+	// todo rename me to be more general (works on more than just offsetMaps)
 	dec := gob.NewEncoder(r)
 	if err := dec.Encode(obj); err != nil {
 		log.Fatalln(err)
@@ -59,6 +61,7 @@ func NewFileBackedNaiveDB(filename string) (_ *FileBackedNaiveDB, err error) {
 	hintStore, err := os.OpenFile(hintStoreFilename, os.O_RDWR, 0644)
 	offsetMap := make(map[string]int64)
 	if err != nil {
+		// Not really an error -- just means we need to create the file
 		if errors.Is(err, os.ErrNotExist) {
 			hintStore, err = os.Create(hintStoreFilename)
 			if err != nil {
