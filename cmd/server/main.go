@@ -10,7 +10,7 @@ import (
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
-	db, err := naivedb.NewFileBackedNaiveDB("database")
+	db, err := naivedb.NewNaiveDB("database")
 	if err != nil {
 		log.Fatal(err)
 	}

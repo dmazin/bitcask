@@ -11,42 +11,38 @@ import (
 	"strings"
 )
 
-type ReaderStringWriter interface {
+type ReadStringWriterCloser interface {
 	io.Reader
 	io.StringWriter
 	io.Seeker
+	io.Closer
 }
-
 type NaiveDB struct {
-	store     ReaderStringWriter
-	hintStore io.ReadWriter
+	store     ReadStringWriterCloser
+	hintStore io.ReadWriteCloser
 	offsetMap map[string]int64
 }
 
-type FileBackedNaiveDB struct {
-	db        NaiveDB
-	store     io.Closer
-	hintStore io.Closer
-}
-
-func attemptLoadOffsetMap(r io.Reader, obj interface{}) {
+func attemptLoadOffsetMap(r io.ReadCloser, obj interface{}) {
 	// decodes an arbitrary obj from r
 	// todo rename me to be more general (works on more than just offsetMaps)
 	// or make it a method of NaiveDB like generateOffsetMap
 	dec := gob.NewDecoder(r)
 	if err := dec.Decode(obj); err != nil {
+		r.Close() // ignore closing error; Encode error takes precedence
 		log.Fatalln(err)
 	}
 
 	log.Printf("loaded object %v", obj)
 }
 
-func attemptSaveOffsetMap(r io.Writer, obj interface{}) {
+func attemptSaveOffsetMap(r io.WriteCloser, obj interface{}) {
 	// encodes an arbitrary obj to r
 	// todo rename me to be more general (works on more than just offsetMaps)
 	// or make it a method of NaiveDB like generateOffsetMap
 	dec := gob.NewEncoder(r)
 	if err := dec.Encode(obj); err != nil {
+		r.Close() // ignore closing error; Encode error takes precedence
 		log.Fatalln(err)
 	}
 
@@ -78,12 +74,12 @@ func (db *NaiveDB) generateOffsetMap() {
 
 		db.offsetMap[key] = currentOffset
 		log.Printf("key=%s is at offset %v", key, currentOffset)
-	}	
+	}
 
 	log.Printf("generated offset map. current map: %v", db.offsetMap)
 }
 
-func NewFileBackedNaiveDB(filename string) (_ *FileBackedNaiveDB, err error) {
+func NewNaiveDB(filename string) (_ *NaiveDB, err error) {
 	// store is our source of truth
 	store, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
@@ -122,30 +118,21 @@ func NewFileBackedNaiveDB(filename string) (_ *FileBackedNaiveDB, err error) {
 		attemptLoadOffsetMap(hintStore, &db.offsetMap)
 	}
 
-	return &FileBackedNaiveDB{db, store, hintStore}, err
+	return &db, err
 }
 
-func (db *FileBackedNaiveDB) Set(key string, value string) (err error) {
-	err = db.db.set(key, value)
-	if err != nil {
-		db.store.Close() // ignore error; Write error takes precedence
-		return err
-	}
-
-	return nil
-}
-
-func (db *FileBackedNaiveDB) Get(key string) (value string, err error) {
-	return db.db.get(key)
-}
-
-func (db *NaiveDB) set(key string, value string) (err error) {
+func (db *NaiveDB) Set(key string, value string) (err error) {
 	currentOffset, err := db.store.Seek(0, io.SeekEnd)
 	if err != nil {
+		db.store.Close() // ignore closing error; Seek error takes precedence
 		return err
 	}
 
 	_, err = db.store.WriteString(fmt.Sprintf("%s,%s\n", key, value))
+	if err != nil {
+		db.store.Close() // ignore closing error; WriteString error takes precedence
+		return err
+	}
 	db.offsetMap[key] = currentOffset
 
 	attemptSaveOffsetMap(db.hintStore, db.offsetMap)
@@ -153,7 +140,7 @@ func (db *NaiveDB) set(key string, value string) (err error) {
 	return err
 }
 
-func (db *NaiveDB) get(key string) (value string, err error) {
+func (db *NaiveDB) Get(key string) (value string, err error) {
 	offset := db.offsetMap[key]
 	log.Printf("my offsetmap tells me that key=%s is at offset %v", key, offset)
 	// fixme return an error if the key is missing

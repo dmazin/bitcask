@@ -20,7 +20,7 @@ func main() {
 		value = flag.Arg(1)
 	}
 
-	db, err := naivedb.NewFileBackedNaiveDB("database")
+	db, err := naivedb.NewNaiveDB("database")
 	if err != nil {
 		log.Fatal(err)
 	}
