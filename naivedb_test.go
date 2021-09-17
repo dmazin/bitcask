@@ -60,3 +60,8 @@ func TestSetThenGet(t *testing.T) {
 		t.Fatalf(`Expected set to return %q but got %q, %v`, value, stored_value, err)
 	}
 }
+
+
+// func TestGenerateOffsetMapFromDatabase(t *testing.T) {
+// 	// Tests that NaiveDB.offsetMap is generated correctly from an existing database file
+// }

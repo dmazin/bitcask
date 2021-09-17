@@ -32,6 +32,7 @@ type FileBackedNaiveDB struct {
 func attemptLoadOffsetMap(r io.Reader, obj interface{}) {
 	// decodes an arbitrary obj from r
 	// todo rename me to be more general (works on more than just offsetMaps)
+	// or make it a method of NaiveDB like generateOffsetMap
 	dec := gob.NewDecoder(r)
 	if err := dec.Decode(obj); err != nil {
 		log.Fatalln(err)
@@ -43,6 +44,7 @@ func attemptLoadOffsetMap(r io.Reader, obj interface{}) {
 func attemptSaveOffsetMap(r io.Writer, obj interface{}) {
 	// encodes an arbitrary obj to r
 	// todo rename me to be more general (works on more than just offsetMaps)
+	// or make it a method of NaiveDB like generateOffsetMap
 	dec := gob.NewEncoder(r)
 	if err := dec.Encode(obj); err != nil {
 		log.Fatalln(err)
@@ -81,17 +83,17 @@ func (db *NaiveDB) generateOffsetMap() {
 	log.Printf("generated offset map. current map: %v", db.offsetMap)
 }
 
-// func generateOffsetMap(store io.Reader) {
-// }
-
 func NewFileBackedNaiveDB(filename string) (_ *FileBackedNaiveDB, err error) {
+	// store is our source of truth
 	store, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		return nil, err
 	}
 
+	// hintStore is a checkpoint of offsetMap so we don't have to generate it every startup
 	hintStoreFilename := fmt.Sprintf("%s.hint", filename)
 	hintStore, err := os.OpenFile(hintStoreFilename, os.O_RDWR, 0644)
+	// offsetMap tells you how many bytes from io.SeekStart you have to seek to get to the key/value pair
 	offsetMap := make(map[string]int64)
 	createdHintStore := false
 	if err != nil {
@@ -110,14 +112,14 @@ func NewFileBackedNaiveDB(filename string) (_ *FileBackedNaiveDB, err error) {
 		} else {
 			log.Fatalln(err)
 		}
-	} else {
-		attemptLoadOffsetMap(hintStore, &offsetMap)
 	}
 
 	db := NaiveDB{store, hintStore, offsetMap}
 
 	if createdHintStore {
 		db.generateOffsetMap()
+	} else {
+		attemptLoadOffsetMap(hintStore, &db.offsetMap)
 	}
 
 	return &FileBackedNaiveDB{db, store, hintStore}, err
