@@ -50,7 +50,6 @@ func attemptSaveOffsetMap(r io.WriteCloser, obj interface{}) {
 }
 
 func (db *NaiveDB) generateOffsetMap() {
-	// TODO What's the point of this function -- it's called only
 	// when we create the hintStore, which is exactly when there
 	// is nothing in the file to read.
 	currentOffset, err := db.store.Seek(0, io.SeekStart)
