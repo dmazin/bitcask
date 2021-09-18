@@ -61,6 +61,29 @@ func TestSetThenGet(t *testing.T) {
 	}
 }
 
-// func TestGenerateOffsetMapFromDatabase(t *testing.T) {
-// 	// Tests that NaiveDB.offsetMap is generated correctly from an existing database file
-// }
+func TestGenerateOffsetMapFromDatabase(t *testing.T) {
+	// Tests that NaiveDB.offsetMap is generated correctly from an existing database file
+	defer os.Remove("test_data/database.hint")
+
+	db, err := NewNaiveDB("test_data/database")
+	// NewNaiveDB will call generateOffsetMap
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := map[string]int64{
+		"foo": 0,
+		"fizz": 7,
+		"baz": 16,
+	}
+
+	if len(db.offsetMap) != len(expected) {
+		t.Fatalf(`Expected offsetMap to have %v keys but got %v`, len(expected), len(db.offsetMap))
+	}
+
+	for k, v := range db.offsetMap {
+		if v != expected[k] {
+			t.Fatalf(`Expected offsetMap[%q] to be %q but got %q`, k, expected[k], v)
+		}
+	}
+}
