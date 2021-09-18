@@ -23,38 +23,42 @@ type NaiveDB struct {
 	offsetMap map[string]int64
 }
 
-func attemptLoadOffsetMap(r io.ReadCloser, obj interface{}) {
+func attemptLoadOffsetMap(r io.ReadCloser, obj interface{}) (err error) {
 	// decodes an arbitrary obj from r
 	// todo rename me to be more general (works on more than just offsetMaps)
 	// or make it a method of NaiveDB like generateOffsetMap
 	dec := gob.NewDecoder(r)
 	if err := dec.Decode(obj); err != nil {
 		r.Close() // ignore closing error; Encode error takes precedence
-		log.Fatalln(err)
+		return err
 	}
 
 	log.Printf("loaded object %v", obj)
+
+	return err
 }
 
-func attemptSaveOffsetMap(r io.WriteCloser, obj interface{}) {
+func attemptSaveOffsetMap(r io.WriteCloser, obj interface{}) (err error) {
 	// encodes an arbitrary obj to r
 	// todo rename me to be more general (works on more than just offsetMaps)
 	// or make it a method of NaiveDB like generateOffsetMap
 	dec := gob.NewEncoder(r)
 	if err := dec.Encode(obj); err != nil {
 		r.Close() // ignore closing error; Encode error takes precedence
-		log.Fatalln(err)
+		return err
 	}
 
 	log.Printf("saved object %v", obj)
+
+	return err
 }
 
-func (db *NaiveDB) generateOffsetMap() {
+func (db *NaiveDB) generateOffsetMap() (err error) {
 	// when we create the hintStore, which is exactly when there
 	// is nothing in the file to read.
 	currentOffset, err := db.store.Seek(0, io.SeekStart)
 	if err != nil {
-		log.Fatalln(err)
+		return err
 	}
 
 	log.Printf("starting at offset %v. should be 0!", currentOffset)
@@ -62,24 +66,25 @@ func (db *NaiveDB) generateOffsetMap() {
 
 	scanner := bufio.NewScanner(db.store)
 	for scanner.Scan() {
-		currentOffset, err := db.store.Seek(0, io.SeekCurrent)
-		if err != nil {
-			log.Fatalln(err)
-		}
-
 		line := scanner.Text()
+
 		split_line := strings.Split(line, ",")
 		key := split_line[0]
 
 		db.offsetMap[key] = currentOffset
+
 		log.Printf("key=%s is at offset %v", key, currentOffset)
+		currentOffset += int64(len(line))
 	}
 
 	log.Printf("generated offset map. current map: %v", db.offsetMap)
+
+	return err
 }
 
 func NewNaiveDB(filename string) (_ *NaiveDB, err error) {
 	// store is our source of truth
+	// todo filename -> path
 	store, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		return nil, err
@@ -96,8 +101,7 @@ func NewNaiveDB(filename string) (_ *NaiveDB, err error) {
 		if errors.Is(err, os.ErrNotExist) {
 			hintStore, err = os.Create(hintStoreFilename)
 			if err != nil {
-				// fixme just return these errs instead
-				log.Fatalln(err)
+				return nil, err
 			}
 
 			// Don't return os.ErrNotExist from main fn
@@ -105,18 +109,18 @@ func NewNaiveDB(filename string) (_ *NaiveDB, err error) {
 
 			createdHintStore = true
 		} else {
-			log.Fatalln(err)
+			return nil, err
 		}
 	}
 
 	db := NaiveDB{store, hintStore, offsetMap}
 
 	if createdHintStore {
-		db.generateOffsetMap()
+		err = db.generateOffsetMap()
 	} else {
 		attemptLoadOffsetMap(hintStore, &db.offsetMap)
 	}
-
+	
 	return &db, err
 }
 
