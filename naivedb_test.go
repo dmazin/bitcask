@@ -43,21 +43,31 @@ func TestSetThenGet(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	key := "foo"
-	value := "bar"
-
-	err = db.Set(key, value)
-
-	// TODO why does the sample code use a string literal?
-	// https://golang.org/doc/tutorial/add-a-test
-	if err != nil {
-		t.Fatalf(`%q`, err)
+	test_data := map[string]string{
+		"foo": "bar",
+		"fizz": "bazz",
+		"baz": "bat",
 	}
+	
+	for k, v := range test_data {
+		err = db.Set(k, v)
 
-	stored_value, err := db.Get(key)
+		if err != nil {
+			// TODO why does the sample code use a string literal?
+			// https://golang.org/doc/tutorial/add-a-test
+			t.Fatalf(`%q`, err)
+		}
 
-	if stored_value != value || err != nil {
-		t.Fatalf(`Expected set to return %q but got %q, %v`, value, stored_value, err)
+		stored_value, err := db.Get(k)
+		if err != nil {
+			// TODO why does the sample code use a string literal?
+			// https://golang.org/doc/tutorial/add-a-test
+			t.Fatalf(`%q`, err)
+		}
+
+		if stored_value != v {
+			t.Fatalf(`Expected set to return %q but got %q, %v`, v, stored_value, err)
+		}
 	}
 }
 

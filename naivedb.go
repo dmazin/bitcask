@@ -61,8 +61,8 @@ func (db *NaiveDB) generateOffsetMap() (err error) {
 		return err
 	}
 
-	log.Printf("starting at offset %v. should be 0!", currentOffset)
 	log.Printf("generating offset map. current map: %v", db.offsetMap)
+	log.Printf("starting at offset %v. should be 0!", currentOffset)
 
 	scanner := bufio.NewScanner(db.store)
 	for scanner.Scan() {
@@ -136,8 +136,10 @@ func (db *NaiveDB) Set(key string, value string) (err error) {
 		db.store.Close() // ignore closing error; WriteString error takes precedence
 		return err
 	}
-	db.offsetMap[key] = currentOffset
 
+	log.Printf("wrote %s,%s to store at offset %v", key, value, currentOffset)
+
+	db.offsetMap[key] = currentOffset
 	attemptSaveOffsetMap(db.hintStore, db.offsetMap)
 
 	return err
