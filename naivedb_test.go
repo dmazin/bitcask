@@ -18,6 +18,8 @@ func TestGetBeforeSet(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	defer db.Close()
+
 	key := "foo"
 	stored_value, err := db.Get(key)
 
@@ -42,6 +44,8 @@ func TestSetThenGet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	defer db.Close()
 
 	test_data := map[string]string{
 		"foo": "bar",
@@ -73,13 +77,15 @@ func TestSetThenGet(t *testing.T) {
 
 func TestGenerateOffsetMapFromDatabase(t *testing.T) {
 	// Tests that NaiveDB.offsetMap is generated correctly from an existing database file
-	defer os.Remove("test_data/database.hint")
-
 	db, err := NewNaiveDB("test_data/database")
+
 	// NewNaiveDB will call generateOffsetMap
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	defer db.Close()
+	defer os.Remove("test_data/database.hint")
 
 	expected := map[string]int64{
 		"foo": 0,

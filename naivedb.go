@@ -11,15 +11,9 @@ import (
 	"strings"
 )
 
-type ReadStringWriterCloser interface {
-	io.Reader
-	io.StringWriter
-	io.Seeker
-	io.Closer
-}
 type NaiveDB struct {
-	store     ReadStringWriterCloser
-	hintStore io.ReadWriteCloser
+	store     *os.File
+	hintStore *os.File
 	offsetMap map[string]int64
 }
 
@@ -82,6 +76,13 @@ func (db *NaiveDB) generateOffsetMap() (err error) {
 	return err
 }
 
+func (db *NaiveDB) Close() {
+	db.store.Close()
+	db.hintStore.Close()
+
+	log.Printf("closed store and hintStore")
+}
+
 func NewNaiveDB(filename string) (_ *NaiveDB, err error) {
 	// store is our source of truth
 	// todo filename -> path
@@ -93,6 +94,7 @@ func NewNaiveDB(filename string) (_ *NaiveDB, err error) {
 	// hintStore is a checkpoint of offsetMap so we don't have to generate it every startup
 	hintStoreFilename := fmt.Sprintf("%s.hint", filename)
 	hintStore, err := os.OpenFile(hintStoreFilename, os.O_RDWR, 0644)
+
 	// offsetMap tells you how many bytes from io.SeekStart you have to seek to get to the key/value pair
 	offsetMap := make(map[string]int64)
 	createdHintStore := false
@@ -116,11 +118,21 @@ func NewNaiveDB(filename string) (_ *NaiveDB, err error) {
 	db := NaiveDB{store, hintStore, offsetMap}
 
 	if createdHintStore {
-		err = db.generateOffsetMap()
+		// TODO Is there some other way to assign to err, but initialize fi?
+		var fi os.FileInfo
+		fi, err = store.Stat()
+		if err != nil {
+			return nil, err
+		}
+
+		if fi.Size() > 0 {
+			// TODO How can I test that this will get called only if db.store is nonempty?
+			err = db.generateOffsetMap()
+		}
 	} else {
 		attemptLoadOffsetMap(hintStore, &db.offsetMap)
 	}
-	
+
 	return &db, err
 }
 
