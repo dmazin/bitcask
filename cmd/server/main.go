@@ -4,7 +4,7 @@ import (
 	"log"
 
 	"github.com/dmazin/naivedb"
-	server "github.com/dmazin/naivedb/api/http"
+	"github.com/dmazin/naivedb/api/http_server"
 )
 
 func main() {
@@ -15,5 +15,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	server.SetUpAndListen(db)
+	http_server.SetUpAndListen(db)
+
+	defer db.Close()
 }

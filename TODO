@@ -1,2 +1,1 @@
-
-TODO Move server/API/cmd stuff into its own branch and merge http-api to main
+TODO Move server handling out of api -- /api is for ["OpenAPI/Swagger specs, JSON schema files, protocol definition files."](https://github.com/golang-standards/project-layout/tree/master/api)
