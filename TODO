@@ -1,1 +1,2 @@
 TODO Move server handling out of api -- /api is for ["OpenAPI/Swagger specs, JSON schema files, protocol definition files."](https://github.com/golang-standards/project-layout/tree/master/api)
+TODO Build/run using Docker
