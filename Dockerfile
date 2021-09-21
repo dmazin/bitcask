@@ -1,38 +1,25 @@
-FROM golang:1.16 as build
+# Taken from https://github.com/olliefr/docker-gs-ping/blob/main/Dockerfile
+FROM golang:1.16-alpine
 
-# Create appuser.
-# See https://stackoverflow.com/a/55757473/12429735
-ENV USER=appuser
-ENV UID=10001
-RUN adduser \
-    --disabled-password \
-    --gecos "" \
-    --home "/nonexistent" \
-    --shell "/sbin/nologin" \
-    --no-create-home \
-    --uid "${UID}" \
-    "${USER}"
+# Set destination for COPY
+WORKDIR /app
 
-RUN apt-get update && apt-get install -y ca-certificates
-RUN ls
-# RUN go get github.com/dmazin/naivedb
+# Download Go modules
+COPY go.mod .
+# COPY go.sum .
+RUN go mod download
+
+# Copy the source code. Note the slash at the end, as explained in
+# https://docs.docker.com/engine/reference/builder/#copy
+COPY . /app
 
 # Build
-WORKDIR /go/src/github.com/rakyll/hey
-# RUN go mod download
-RUN CGO_ENABLED=0 GOOS=linux make build
+RUN go build -o /app/bin/naivedb-server /app/cmd/server
 
-###############################################################################
-# final stage
-FROM scratch
-COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=build /etc/passwd /etc/passwd
-COPY --from=build /etc/group /etc/group
-USER appuser:appuser
+# This is for documentation purposes only.
+# To actually open the port, runtime parameters
+# must be supplied to the docker command.
+EXPOSE 8080
 
-ARG APPLICATION="naivedb"
-ARG DESCRIPTION="Re-implementation of Bitcask"
-ARG PACKAGE="dmazin/naivedb"
-
-COPY --from=build /go/bin/${APPLICATION} /naivedb-server
-ENTRYPOINT ["/naivedb-server"]
+# Run
+CMD [ "/app/bin/naivedb-server" ]

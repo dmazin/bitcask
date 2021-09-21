@@ -1,0 +1,16 @@
+version: "3"
+
+services:
+  naivedb-server:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    container_name: naivedb-server
+    # image: fb5812bbfc65
+    volumes:
+      - data:/data
+    ports:
+      - 8080:8080
+
+volumes:
+  data:
