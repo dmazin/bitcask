@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -83,17 +84,23 @@ func (db *NaiveDB) Close() {
 	log.Printf("closed store and hintStore")
 }
 
-func NewNaiveDB(filename string) (_ *NaiveDB, err error) {
+type NaiveDBOptions struct {
+	dataPath string
+}
+
+func NewNaiveDB(options NaiveDBOptions) (_ *NaiveDB, err error) {
+	storeFilepath := filepath.Join(options.dataPath, "store")
+
 	// store is our source of truth
 	// todo filename -> path
-	store, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
+	store, err := os.OpenFile(storeFilepath, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		return nil, err
 	}
 
 	// hintStore is a checkpoint of offsetMap so we don't have to generate it every startup
-	hintStoreFilename := fmt.Sprintf("%s.hint", filename)
-	hintStore, err := os.OpenFile(hintStoreFilename, os.O_RDWR, 0644)
+	hintStoreFilepath := filepath.Join(options.dataPath, "hintStore")
+	hintStore, err := os.OpenFile(hintStoreFilepath, os.O_RDWR, 0644)
 
 	// offsetMap tells you how many bytes from io.SeekStart you have to seek to get to the key/value pair
 	offsetMap := make(map[string]int64)
@@ -101,7 +108,7 @@ func NewNaiveDB(filename string) (_ *NaiveDB, err error) {
 	if err != nil {
 		// Not really an error -- just means we need to create the file
 		if errors.Is(err, os.ErrNotExist) {
-			hintStore, err = os.Create(hintStoreFilename)
+			hintStore, err = os.Create(hintStoreFilepath)
 			if err != nil {
 				return nil, err
 			}
