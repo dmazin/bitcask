@@ -12,6 +12,9 @@ import (
 	"strings"
 )
 
+const storeFilename string = "store"
+const hintStoreFilename string = "hintStore"
+
 type NaiveDB struct {
 	store     *os.File
 	hintStore *os.File
@@ -89,7 +92,7 @@ type NaiveDBOptions struct {
 }
 
 func NewNaiveDB(options NaiveDBOptions) (_ *NaiveDB, err error) {
-	storeFilepath := filepath.Join(options.dataPath, "store")
+	storeFilepath := filepath.Join(options.dataPath, storeFilename)
 
 	// store is our source of truth
 	// todo filename -> path
@@ -99,7 +102,7 @@ func NewNaiveDB(options NaiveDBOptions) (_ *NaiveDB, err error) {
 	}
 
 	// hintStore is a checkpoint of offsetMap so we don't have to generate it every startup
-	hintStoreFilepath := filepath.Join(options.dataPath, "hintStore")
+	hintStoreFilepath := filepath.Join(options.dataPath, hintStoreFilename)
 	hintStore, err := os.OpenFile(hintStoreFilepath, os.O_RDWR, 0644)
 
 	// offsetMap tells you how many bytes from io.SeekStart you have to seek to get to the key/value pair
