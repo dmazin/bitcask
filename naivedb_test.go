@@ -1,41 +1,11 @@
 package naivedb
 
 import (
-	"os"
 	"testing"
 )
 
-// func TestGetBeforeSet(t *testing.T) {
-// 	f, err := os.CreateTemp("", "naivedb_test")
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-
-// 	defer os.Remove(f.Name())
-
-// 	db, err := NewNaiveDB(f.Name())
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-
-// 	defer db.Close()
-
-// 	key := "foo"
-// 	stored_value, err := db.Get(key)
-
-// 	if err != nil {
-// 		t.Fatalf(`%q`, err)
-// 	}
-
-// 	if stored_value != "" || err != nil {
-// 		t.Fatalf(`Expected set to return %q but got %q, %v`, "", stored_value, err)
-// 	}
-// }
-
-func TestSetThenGet(t *testing.T) {
-	tempDirName := os.TempDir()
-
-	// TODO defer os.Remove(f.Name())
+func TestGetBeforeSet(t *testing.T) {
+	tempDirName := t.TempDir()
 
 	NaiveDBOptions := NaiveDBOptions{
 		dataPath : tempDirName,
@@ -46,7 +16,33 @@ func TestSetThenGet(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	defer db.Close()
+	t.Cleanup(db.Close)
+
+	key := "foo"
+	stored_value, err := db.Get(key)
+
+	if err != nil {
+		t.Fatalf(`%q`, err)
+	}
+
+	if stored_value != "" || err != nil {
+		t.Fatalf(`Expected set to return %q but got %q, %v`, "", stored_value, err)
+	}
+}
+
+func TestSetThenGet(t *testing.T) {
+	tempDirName := t.TempDir()
+
+	NaiveDBOptions := NaiveDBOptions{
+		dataPath : tempDirName,
+	}
+
+	db, err := NewNaiveDB(NaiveDBOptions)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Cleanup(db.Close)
 
 	test_data := map[string]string{
 		"foo": "bar",
