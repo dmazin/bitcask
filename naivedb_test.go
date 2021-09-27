@@ -2,6 +2,7 @@ package naivedb
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -9,7 +10,7 @@ func TestGetBeforeSet(t *testing.T) {
 	tempDirName := t.TempDir()
 
 	NaiveDBOptions := NaiveDBOptions{
-		dataPath : tempDirName,
+		dataPath: tempDirName,
 	}
 
 	db, err := NewNaiveDB(NaiveDBOptions)
@@ -35,7 +36,7 @@ func TestSetThenGet(t *testing.T) {
 	tempDirName := t.TempDir()
 
 	NaiveDBOptions := NaiveDBOptions{
-		dataPath : tempDirName,
+		dataPath: tempDirName,
 	}
 
 	db, err := NewNaiveDB(NaiveDBOptions)
@@ -46,11 +47,11 @@ func TestSetThenGet(t *testing.T) {
 	t.Cleanup(db.Close)
 
 	test_data := map[string]string{
-		"foo": "bar",
+		"foo":  "bar",
 		"fizz": "bazz",
-		"baz": "bat",
+		"baz":  "bat",
 	}
-	
+
 	for k, v := range test_data {
 		err = db.Set(k, v)
 
@@ -97,9 +98,9 @@ func TestGenerateOffsetMapFromDatabase(t *testing.T) {
 	t.Cleanup(db.Close)
 
 	expected := map[string]int64{
-		"foo": 0,
+		"foo":  0,
 		"fizz": 7,
-		"baz": 16,
+		"baz":  16,
 	}
 
 	if len(db.offsetMap) != len(expected) {
@@ -110,5 +111,68 @@ func TestGenerateOffsetMapFromDatabase(t *testing.T) {
 		if v != expected[k] {
 			t.Fatalf(`Expected offsetMap[%q] to be %q but got %q`, k, expected[k], v)
 		}
+	}
+}
+
+// from https://git.mills.io/prologic/bitcask/src/branch/master/bitcask_test.go#L2112
+type benchmarkTestCase struct {
+	name string
+	size int
+}
+
+func BenchmarkGet(b *testing.B) {
+	tempDirName := b.TempDir()
+
+	NaiveDBOptions := NaiveDBOptions{
+		dataPath: tempDirName,
+	}
+
+
+	tests := []benchmarkTestCase{
+		{"128B", 128},
+		{"256B", 256},
+		{"512B", 512},
+		{"1K", 1024},
+		{"2K", 2048},
+		{"4K", 4096},
+		{"8K", 8192},
+		{"16K", 16384},
+		{"32K", 32768},
+	}
+
+	for _, tt := range tests {
+		b.Run(tt.name, func(b *testing.B) {
+			b.SetBytes(int64(tt.size))
+
+			// key := []byte("foo")
+			// value := []byte(strings.Repeat(" ", tt.size))
+			key := "foo"
+			value := strings.Repeat(" ", tt.size)
+
+			db, err := NewNaiveDB(NaiveDBOptions)
+			if err != nil {
+				b.Fatal(err)
+			}
+			
+			err = db.Set(key, value)
+			if err != nil {
+				b.Fatal(err)
+			}
+
+			b.Cleanup(db.Close)
+
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				val, err := db.Get(key)
+				if err != nil {
+					b.Fatal(err)
+				}
+				if val != value {
+					b.Errorf("unexpected value")
+				}
+			}
+			b.StopTimer()
+			db.Close()
+		})
 	}
 }
