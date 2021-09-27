@@ -121,12 +121,13 @@ type benchmarkTestCase struct {
 }
 
 func BenchmarkGet(b *testing.B) {
+	SuppressLogs(b)
+
 	tempDirName := b.TempDir()
 
 	NaiveDBOptions := NaiveDBOptions{
 		dataPath: tempDirName,
 	}
-
 
 	tests := []benchmarkTestCase{
 		{"128B", 128},
@@ -153,7 +154,7 @@ func BenchmarkGet(b *testing.B) {
 			if err != nil {
 				b.Fatal(err)
 			}
-			
+
 			err = db.Set(key, value)
 			if err != nil {
 				b.Fatal(err)
@@ -172,7 +173,6 @@ func BenchmarkGet(b *testing.B) {
 				}
 			}
 			b.StopTimer()
-			db.Close()
 		})
 	}
 }
