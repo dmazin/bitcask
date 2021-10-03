@@ -1,7 +1,7 @@
 package naivedb
 
 import (
-	"bufio"
+	// "bufio"
 	"encoding/gob"
 	"errors"
 	"fmt"
@@ -9,16 +9,21 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
+	// "strings"
 )
 
 const storeFilename string = "store"
 const hintStoreFilename string = "hintStore"
 
+type OffsetMapValue struct {
+	valueSz  int64
+	valuePos int64
+}
+
 type NaiveDB struct {
 	store     *os.File
 	hintStore *os.File
-	offsetMap map[string]int64
+	offsetMap map[string]OffsetMapValue
 }
 
 func attemptLoadOffsetMap(r io.ReadCloser, obj interface{}) (err error) {
@@ -51,34 +56,34 @@ func attemptSaveOffsetMap(r io.WriteCloser, obj interface{}) (err error) {
 	return err
 }
 
-func (db *NaiveDB) generateOffsetMap() (err error) {
-	// when we create the hintStore, which is exactly when there
-	// is nothing in the file to read.
-	currentOffset, err := db.store.Seek(0, io.SeekStart)
-	if err != nil {
-		return err
-	}
+// func (db *NaiveDB) generateOffsetMap() (err error) {
+// 	// when we create the hintStore, which is exactly when there
+// 	// is nothing in the file to read.
+// 	currentOffset, err := db.store.Seek(0, io.SeekStart)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	log.Printf("generating offset map. current map: %v", db.offsetMap)
-	log.Printf("starting at offset %v. should be 0!", currentOffset)
+// 	log.Printf("generating offset map. current map: %v", db.offsetMap)
+// 	log.Printf("starting at offset %v. should be 0!", currentOffset)
 
-	scanner := bufio.NewScanner(db.store)
-	for scanner.Scan() {
-		line := scanner.Text()
+// 	scanner := bufio.NewScanner(db.store)
+// 	for scanner.Scan() {
+// 		line := scanner.Text()
 
-		split_line := strings.Split(line, ",")
-		key := split_line[0]
+// 		split_line := strings.Split(line, ",")
+// 		key := split_line[0]
 
-		db.offsetMap[key] = currentOffset
+// 		db.offsetMap[key] = currentOffset
 
-		log.Printf("key=%s is at offset %v", key, currentOffset)
-		currentOffset += int64(len(line))
-	}
+// 		log.Printf("key=%s is at offset %v", key, currentOffset)
+// 		currentOffset += int64(len(line))
+// 	}
 
-	log.Printf("generated offset map. current map: %v", db.offsetMap)
+// 	log.Printf("generated offset map. current map: %v", db.offsetMap)
 
-	return err
-}
+// 	return err
+// }
 
 func (db *NaiveDB) Close() {
 	db.store.Close()
@@ -106,7 +111,7 @@ func NewNaiveDB(options NaiveDBOptions) (_ *NaiveDB, err error) {
 	hintStore, err := os.OpenFile(hintStoreFilepath, os.O_RDWR, 0644)
 
 	// offsetMap tells you how many bytes from io.SeekStart you have to seek to get to the key/value pair
-	offsetMap := make(map[string]int64)
+	offsetMap := make(map[string]OffsetMapValue)
 	createdHintStore := false
 	if err != nil {
 		// Not really an error -- just means we need to create the file
@@ -137,7 +142,7 @@ func NewNaiveDB(options NaiveDBOptions) (_ *NaiveDB, err error) {
 
 		if fi.Size() > 0 {
 			// TODO How can I test that this will get called only if db.store is nonempty?
-			err = db.generateOffsetMap()
+			// err = db.generateOffsetMap()
 		}
 	} else {
 		attemptLoadOffsetMap(hintStore, &db.offsetMap)
@@ -153,7 +158,7 @@ func (db *NaiveDB) Set(key string, value string) (err error) {
 		return err
 	}
 
-	_, err = db.store.WriteString(fmt.Sprintf("%s,%s\n", key, value))
+	_, err = db.store.WriteString(fmt.Sprintf("%s%s", key, value))
 	if err != nil {
 		db.store.Close() // ignore closing error; WriteString error takes precedence
 		return err
@@ -161,28 +166,24 @@ func (db *NaiveDB) Set(key string, value string) (err error) {
 
 	log.Printf("wrote %s,%s to store at offset %v", key, value, currentOffset)
 
-	db.offsetMap[key] = currentOffset
+	db.offsetMap[key] = OffsetMapValue{
+		valueSz: int64(len(value)),
+		// TODO This will not always fit into int64
+		valuePos: currentOffset + int64(len(key)),
+	}
 	attemptSaveOffsetMap(db.hintStore, db.offsetMap)
 
 	return err
 }
 
 func (db *NaiveDB) Get(key string) (value string, err error) {
-	offset := db.offsetMap[key]
-	log.Printf("my offsetmap tells me that key=%s is at offset %v", key, offset)
+	offsetMapValue := db.offsetMap[key]
 	// fixme return an error if the key is missing
 
-	db.store.Seek(offset, io.SeekStart)
+	log.Printf("my offsetmap tells me that key=%s is at offset %v", key, offsetMapValue.valuePos)
 
-	scanner := bufio.NewScanner(db.store)
-	for scanner.Scan() {
-		line := scanner.Text()
+	valueBytes := make([]byte, offsetMapValue.valueSz)
+	_, err = db.store.ReadAt(valueBytes, offsetMapValue.valuePos)
 
-		if strings.Contains(line, key) {
-			value = strings.Split(line, ",")[1]
-		}
-	}
-
-	err = scanner.Err()
-	return value, err
+	return string(valueBytes), err
 }
