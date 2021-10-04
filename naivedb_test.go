@@ -176,3 +176,53 @@ func BenchmarkGet(b *testing.B) {
 		})
 	}
 }
+
+
+// from https://github.com/prologic/bitcask/blob/9b0daa8a301ae07d532edc6c6a4c9c03ca2f46f0/bitcask_test.go#L2173-L2173
+func BenchmarkSet(b *testing.B) {
+	SuppressLogs(b)
+
+	tempDirName := b.TempDir()
+
+	NaiveDBOptions := NaiveDBOptions{
+		dataPath: tempDirName,
+	}
+
+	tests := []benchmarkTestCase{
+		{"128B", 128},
+		{"256B", 256},
+		{"1K", 1024},
+		{"2K", 2048},
+		{"4K", 4096},
+		{"8K", 8192},
+		{"16K", 16384},
+		{"32K", 32768},
+	}
+
+	for _, tt := range tests {
+		b.Run(tt.name, func(b *testing.B) {
+			b.SetBytes(int64(tt.size))
+
+			db, err := NewNaiveDB(NaiveDBOptions)
+			if err != nil {
+				b.Fatal(err)
+			}
+
+			b.Cleanup(db.Close)
+
+			// key := []byte("foo")
+			// value := []byte(strings.Repeat(" ", tt.size))
+			key := "foo"
+			value := strings.Repeat(" ", tt.size)
+
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				err := db.Set(key, value)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+			b.StopTimer()
+		})
+	}
+}
