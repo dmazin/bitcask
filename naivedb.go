@@ -158,12 +158,19 @@ func (db *NaiveDB) Set(key string, value string) (err error) {
 		return err
 	}
 
-	_, err = db.store.WriteString(fmt.Sprintf("%s%s", key, value))
+	_, err = db.store.Write([]byte(key))
 	if err != nil {
-		db.store.Close() // ignore closing error; WriteString error takes precedence
+		db.store.Close() // ignore closing error; Write error takes precedence
 		return err
 	}
 
+	_, err = db.store.Write([]byte(value))
+	if err != nil {
+		db.store.Close() // ignore closing error; Write error takes precedence
+		return err
+	}
+
+	// TODO make this a debug/trace level statement + probably don't output value
 	log.Printf("wrote %s,%s to store at offset %v", key, value, currentOffset)
 
 	db.offsetMap[key] = OffsetMapValue{
