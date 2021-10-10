@@ -2,4 +2,3 @@ TODO Move server handling out of api -- /api is for ["OpenAPI/Swagger specs, JSO
 TODO Return nil explicitly if there are no errors, rather than returning err and assuming it will be nil if there was no error
 TODO Close current file for writing if a write causes it to exceed the max size (2 GB Bitcask default)
 TODO Merge files if there are > 16 files (Bitcask default)
-TODO Rename GitHub repo to Bitcask
