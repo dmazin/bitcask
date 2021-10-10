@@ -1,2 +1,2 @@
 build:
-	go build -o ./bin/naivedb-server ./cmd/server
+	go build -o ./bin/bitcask-server ./cmd/server

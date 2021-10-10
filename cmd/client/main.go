@@ -4,7 +4,7 @@ import (
 	"flag"
 	"log"
 
-	"github.com/dmazin/naivedb"
+	"github.com/dmazin/bitcask"
 )
 
 func main() {
@@ -20,7 +20,7 @@ func main() {
 		value = flag.Arg(1)
 	}
 
-	db, err := naivedb.NewNaiveDB("database")
+	db, err := bitcask.NewBitcask("database")
 	if err != nil {
 		log.Fatal(err)
 	}

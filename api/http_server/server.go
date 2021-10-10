@@ -5,8 +5,8 @@ import (
 	"net/http"
 )
 
-// func (db *NaiveDB) Get(key string) (value string, err error) {
-// 	func (db *NaiveDB) Set(key string, value string) (err error) {
+// func (db *Bitcask) Get(key string) (value string, err error) {
+// 	func (db *Bitcask) Set(key string, value string) (err error) {
 type KVSetter interface {
 	Set(key string, value string) error
 }

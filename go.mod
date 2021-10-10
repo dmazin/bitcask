@@ -1,3 +1,3 @@
-module github.com/dmazin/naivedb
+module github.com/dmazin/bitcask
 
 go 1.16

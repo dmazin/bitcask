@@ -1,11 +1,11 @@
 version: "3"
 
 services:
-  naivedb-server:
+  bitcask-server:
     build:
       context: ./
       dockerfile: Dockerfile
-    container_name: naivedb-server
+    container_name: bitcask-server
     # image: fb5812bbfc65
     volumes:
       - data:/data

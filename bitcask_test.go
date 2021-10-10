@@ -1,4 +1,4 @@
-package naivedb
+package bitcask
 
 import (
 	// "path/filepath"
@@ -9,11 +9,11 @@ import (
 func TestGetBeforeSet(t *testing.T) {
 	tempDirName := t.TempDir()
 
-	NaiveDBOptions := NaiveDBOptions{
+	BitcaskOptions := BitcaskOptions{
 		dataPath: tempDirName,
 	}
 
-	db, err := NewNaiveDB(NaiveDBOptions)
+	db, err := NewBitcask(BitcaskOptions)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,11 +35,11 @@ func TestGetBeforeSet(t *testing.T) {
 func TestSetThenGet(t *testing.T) {
 	tempDirName := t.TempDir()
 
-	NaiveDBOptions := NaiveDBOptions{
+	BitcaskOptions := BitcaskOptions{
 		dataPath: tempDirName,
 	}
 
-	db, err := NewNaiveDB(NaiveDBOptions)
+	db, err := NewBitcask(BitcaskOptions)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +76,7 @@ func TestSetThenGet(t *testing.T) {
 
 // func TestGenerateOffsetMapFromDatabase(t *testing.T) {
 // 	// First, copy the source database file to a temporary directory At first I
-// 	// wanted to refactor everything so that NaiveDB didn't depend on os.File,
+// 	// wanted to refactor everything so that Bitcask didn't depend on os.File,
 // 	// but [Prometheus' tests follow this same
 // 	// pattern](https://github.com/prometheus/prometheus/blob/main/tsdb/repair_test.go#L73)
 // 	// and I think it works out for them. Maybe file-backed dbs are a special
@@ -87,10 +87,10 @@ func TestSetThenGet(t *testing.T) {
 // 	testDataStoreFilepath := filepath.Join("test_data", storeFilename)
 // 	CopyFile(testDataStoreFilepath, storeFilepath)
 
-// 	// Tests that NaiveDB.offsetMap is generated correctly from an existing database file
-// 	db, err := NewNaiveDB(NaiveDBOptions{dataPath: tempDirName})
+// 	// Tests that Bitcask.offsetMap is generated correctly from an existing database file
+// 	db, err := NewBitcask(BitcaskOptions{dataPath: tempDirName})
 
-// 	// NewNaiveDB will call generateOffsetMap
+// 	// NewBitcask will call generateOffsetMap
 // 	if err != nil {
 // 		t.Fatal(err)
 // 	}
@@ -125,7 +125,7 @@ func BenchmarkGet(b *testing.B) {
 
 	tempDirName := b.TempDir()
 
-	NaiveDBOptions := NaiveDBOptions{
+	BitcaskOptions := BitcaskOptions{
 		dataPath: tempDirName,
 	}
 
@@ -150,7 +150,7 @@ func BenchmarkGet(b *testing.B) {
 			key := "foo"
 			value := strings.Repeat(" ", tt.size)
 
-			db, err := NewNaiveDB(NaiveDBOptions)
+			db, err := NewBitcask(BitcaskOptions)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -177,14 +177,13 @@ func BenchmarkGet(b *testing.B) {
 	}
 }
 
-
 // from https://github.com/prologic/bitcask/blob/9b0daa8a301ae07d532edc6c6a4c9c03ca2f46f0/bitcask_test.go#L2173-L2173
 func BenchmarkSet(b *testing.B) {
 	SuppressLogs(b)
 
 	tempDirName := b.TempDir()
 
-	NaiveDBOptions := NaiveDBOptions{
+	BitcaskOptions := BitcaskOptions{
 		dataPath: tempDirName,
 	}
 
@@ -203,7 +202,7 @@ func BenchmarkSet(b *testing.B) {
 		b.Run(tt.name, func(b *testing.B) {
 			b.SetBytes(int64(tt.size))
 
-			db, err := NewNaiveDB(NaiveDBOptions)
+			db, err := NewBitcask(BitcaskOptions)
 			if err != nil {
 				b.Fatal(err)
 			}

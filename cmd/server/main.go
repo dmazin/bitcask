@@ -3,14 +3,14 @@ package main
 import (
 	"log"
 
-	"github.com/dmazin/naivedb"
-	"github.com/dmazin/naivedb/api/http_server"
+	"github.com/dmazin/bitcask"
+	"github.com/dmazin/bitcask/api/http_server"
 )
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
-	db, err := naivedb.NewNaiveDB("database")
+	db, err := bitcask.NewBitcask("database")
 	if err != nil {
 		log.Fatal(err)
 	}

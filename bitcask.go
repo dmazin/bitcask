@@ -1,10 +1,9 @@
-package naivedb
+package bitcask
 
 import (
 	// "bufio"
 	"encoding/gob"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"os"
@@ -20,7 +19,7 @@ type OffsetMapValue struct {
 	valuePos int64
 }
 
-type NaiveDB struct {
+type Bitcask struct {
 	store     *os.File
 	hintStore *os.File
 	offsetMap map[string]OffsetMapValue
@@ -29,7 +28,7 @@ type NaiveDB struct {
 func attemptLoadOffsetMap(r io.ReadCloser, obj interface{}) (err error) {
 	// decodes an arbitrary obj from r
 	// todo rename me to be more general (works on more than just offsetMaps)
-	// or make it a method of NaiveDB like generateOffsetMap
+	// or make it a method of Bitcask like generateOffsetMap
 	dec := gob.NewDecoder(r)
 	if err := dec.Decode(obj); err != nil {
 		r.Close() // ignore closing error; Encode error takes precedence
@@ -44,7 +43,7 @@ func attemptLoadOffsetMap(r io.ReadCloser, obj interface{}) (err error) {
 func attemptSaveOffsetMap(r io.WriteCloser, obj interface{}) (err error) {
 	// encodes an arbitrary obj to r
 	// todo rename me to be more general (works on more than just offsetMaps)
-	// or make it a method of NaiveDB like generateOffsetMap
+	// or make it a method of Bitcask like generateOffsetMap
 	dec := gob.NewEncoder(r)
 	if err := dec.Encode(obj); err != nil {
 		r.Close() // ignore closing error; Encode error takes precedence
@@ -56,7 +55,7 @@ func attemptSaveOffsetMap(r io.WriteCloser, obj interface{}) (err error) {
 	return err
 }
 
-// func (db *NaiveDB) generateOffsetMap() (err error) {
+// func (db *Bitcask) generateOffsetMap() (err error) {
 // 	// when we create the hintStore, which is exactly when there
 // 	// is nothing in the file to read.
 // 	currentOffset, err := db.store.Seek(0, io.SeekStart)
@@ -85,18 +84,18 @@ func attemptSaveOffsetMap(r io.WriteCloser, obj interface{}) (err error) {
 // 	return err
 // }
 
-func (db *NaiveDB) Close() {
+func (db *Bitcask) Close() {
 	db.store.Close()
 	db.hintStore.Close()
 
 	log.Printf("closed store and hintStore")
 }
 
-type NaiveDBOptions struct {
+type BitcaskOptions struct {
 	dataPath string
 }
 
-func NewNaiveDB(options NaiveDBOptions) (_ *NaiveDB, err error) {
+func NewBitcask(options BitcaskOptions) (_ *Bitcask, err error) {
 	storeFilepath := filepath.Join(options.dataPath, storeFilename)
 
 	// store is our source of truth
@@ -130,7 +129,7 @@ func NewNaiveDB(options NaiveDBOptions) (_ *NaiveDB, err error) {
 		}
 	}
 
-	db := NaiveDB{store, hintStore, offsetMap}
+	db := Bitcask{store, hintStore, offsetMap}
 
 	if createdHintStore {
 		// TODO Is there some other way to assign to err, but initialize fi?
@@ -151,7 +150,7 @@ func NewNaiveDB(options NaiveDBOptions) (_ *NaiveDB, err error) {
 	return &db, err
 }
 
-func (db *NaiveDB) Set(key string, value string) (err error) {
+func (db *Bitcask) Set(key string, value string) (err error) {
 	currentOffset, err := db.store.Seek(0, io.SeekEnd)
 	if err != nil {
 		db.store.Close() // ignore closing error; Seek error takes precedence
@@ -183,7 +182,7 @@ func (db *NaiveDB) Set(key string, value string) (err error) {
 	return err
 }
 
-func (db *NaiveDB) Get(key string) (value string, err error) {
+func (db *Bitcask) Get(key string) (value string, err error) {
 	offsetMapValue := db.offsetMap[key]
 	// fixme return an error if the key is missing
 

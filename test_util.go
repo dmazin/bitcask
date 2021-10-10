@@ -1,4 +1,4 @@
-package naivedb
+package bitcask
 
 import (
 	"io/ioutil"

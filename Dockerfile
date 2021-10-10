@@ -14,7 +14,7 @@ RUN go mod download
 COPY . /app
 
 # Build
-RUN go build -o /app/bin/naivedb-server /app/cmd/server
+RUN go build -o /app/bin/bitcask-server /app/cmd/server
 
 # This is for documentation purposes only.
 # To actually open the port, runtime parameters
@@ -22,4 +22,4 @@ RUN go build -o /app/bin/naivedb-server /app/cmd/server
 EXPOSE 8080
 
 # Run
-CMD [ "/app/bin/naivedb-server" ]
+CMD [ "/app/bin/bitcask-server" ]
