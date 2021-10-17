@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
 	// "strings"
 )
 
@@ -19,6 +20,7 @@ type OffsetMapValue struct {
 	valuePos int64
 }
 
+var mu sync.RWMutex
 type Bitcask struct {
 	store     *os.File
 	hintStore *os.File
@@ -151,6 +153,9 @@ func NewBitcask(options BitcaskOptions) (_ *Bitcask, err error) {
 }
 
 func (db *Bitcask) Set(key string, value string) (err error) {
+	mu.Lock()
+	defer mu.Unlock()
+
 	currentOffset, err := db.store.Seek(0, io.SeekEnd)
 	if err != nil {
 		db.store.Close() // ignore closing error; Seek error takes precedence
@@ -183,6 +188,9 @@ func (db *Bitcask) Set(key string, value string) (err error) {
 }
 
 func (db *Bitcask) Get(key string) (value string, err error) {
+	mu.RLock()
+	defer mu.RUnlock()
+
 	offsetMapValue := db.offsetMap[key]
 	// fixme return an error if the key is missing
 
