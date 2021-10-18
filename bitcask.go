@@ -175,7 +175,8 @@ func (db *Bitcask) Set(key string, value string) (err error) {
 	}
 
 	// TODO make this a debug/trace level statement + probably don't output value
-	log.Printf("wrote %s,%s to store at offset %v", key, value, currentOffset)
+	// log.Printf("wrote %s,%s to store at offset %v", key, value, currentOffset)
+	log.Printf("wrote %s to store at offset %v", key, currentOffset)
 
 	db.offsetMap[key] = OffsetMapValue{
 		valueSz: int64(len(value)),

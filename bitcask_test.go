@@ -120,7 +120,7 @@ type benchmarkTestCase struct {
 	size int
 }
 
-func BenchmarkGet(b *testing.B) {
+func BenchmarkGetSequential(b *testing.B) {
 	SuppressLogs(b)
 
 	tempDirName := b.TempDir()
@@ -130,14 +130,14 @@ func BenchmarkGet(b *testing.B) {
 	}
 
 	tests := []benchmarkTestCase{
-		{"128B", 128},
-		{"256B", 256},
-		{"512B", 512},
-		{"1K", 1024},
-		{"2K", 2048},
-		{"4K", 4096},
-		{"8K", 8192},
-		{"16K", 16384},
+		// {"128B", 128},
+		// {"256B", 256},
+		// {"512B", 512},
+		// {"1K", 1024},
+		// {"2K", 2048},
+		// {"4K", 4096},
+		// {"8K", 8192},
+		// {"16K", 16384},
 		{"32K", 32768},
 	}
 
@@ -177,6 +177,63 @@ func BenchmarkGet(b *testing.B) {
 	}
 }
 
+func BenchmarkGetParallel(b *testing.B) {
+	SuppressLogs(b)
+
+	tempDirName := b.TempDir()
+
+	BitcaskOptions := BitcaskOptions{
+		dataPath: tempDirName,
+	}
+
+	tests := []benchmarkTestCase{
+		// {"128B", 128},
+		// {"256B", 256},
+		// {"512B", 512},
+		// {"1K", 1024},
+		// {"2K", 2048},
+		// {"4K", 4096},
+		// {"8K", 8192},
+		// {"16K", 16384},
+		{"32K", 32768},
+	}
+
+	for _, tt := range tests {
+		b.RunParallel(func(pb *testing.PB) {
+			b.SetBytes(int64(tt.size))
+
+			// key := []byte("foo")
+			// value := []byte(strings.Repeat(" ", tt.size))
+			key := "foo"
+			value := strings.Repeat(" ", tt.size)
+
+			db, err := NewBitcask(BitcaskOptions)
+			if err != nil {
+				b.Fatal(err)
+			}
+
+			err = db.Set(key, value)
+			if err != nil {
+				b.Fatal(err)
+			}
+
+			b.Cleanup(db.Close)
+
+			b.ResetTimer()
+			for pb.Next() {
+				val, err := db.Get(key)
+				if err != nil {
+					b.Fatal(err)
+				}
+				if val != value {
+					b.Errorf("unexpected value")
+				}
+			}
+			b.StopTimer()
+		})
+	}
+}
+
 // from https://github.com/prologic/bitcask/blob/9b0daa8a301ae07d532edc6c6a4c9c03ca2f46f0/bitcask_test.go#L2173-L2173
 func BenchmarkSet(b *testing.B) {
 	SuppressLogs(b)
@@ -188,18 +245,18 @@ func BenchmarkSet(b *testing.B) {
 	}
 
 	tests := []benchmarkTestCase{
-		{"128B", 128},
-		{"256B", 256},
-		{"1K", 1024},
-		{"2K", 2048},
-		{"4K", 4096},
-		{"8K", 8192},
-		{"16K", 16384},
+		// {"128B", 128},
+		// {"256B", 256},
+		// {"1K", 1024},
+		// {"2K", 2048},
+		// {"4K", 4096},
+		// {"8K", 8192},
+		// {"16K", 16384},
 		{"32K", 32768},
 	}
 
 	for _, tt := range tests {
-		b.Run(tt.name, func(b *testing.B) {
+		b.RunParallel(func(pb *testing.PB) {
 			b.SetBytes(int64(tt.size))
 
 			db, err := NewBitcask(BitcaskOptions)
@@ -214,14 +271,14 @@ func BenchmarkSet(b *testing.B) {
 			key := "foo"
 			value := strings.Repeat(" ", tt.size)
 
-			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
+			for pb.Next() {
+				// b.ResetTimer()
 				err := db.Set(key, value)
 				if err != nil {
 					b.Fatal(err)
 				}
+				// b.StopTimer()
 			}
-			b.StopTimer()
 		})
 	}
 }
