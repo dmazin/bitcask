@@ -157,6 +157,7 @@ func (db *Bitcask) Set(key string, value string) (err error) {
 		return err
 	}
 
+	// TODO Why am I writing the key and value separately?
 	_, err = db.store.Write([]byte(key))
 	if err != nil {
 		db.store.Close() // ignore closing error; Write error takes precedence
