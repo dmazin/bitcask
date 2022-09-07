@@ -1,0 +1,5 @@
+- [ ] Return nil explicitly if there are no errors, rather than returning err and assuming it will be nil if there was no error
+- [ ] Close current file for writing if a write causes it to exceed the max size (2 GB Bitcask default)
+- [ ] Merge files if there are > 16 files (Bitcask default)
+- [ ] Generate offset map from the actual K/V store file 
+- [ ] Move keyDir into its own package
